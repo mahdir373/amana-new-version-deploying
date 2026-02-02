@@ -37,7 +37,7 @@ const AllLogs = () => {
     try {
       setLoading(true);
       let response;
-      if (user.role === 'admin') {
+      if (user.role === 'Manager') {
         response = await logService.getAllLogsAdmin(filters);
       } else {
         response = await logService.getAllLogs(filters);
@@ -251,7 +251,7 @@ const AllLogs = () => {
                         <FaEye />
                       </Button>
 
-                      {(user.role === 'admin' || log.teamLeader?._id === user.id) && (
+                      {(user.role === 'Manager' || log.teamLeader?._id === user.id) && (
                         <Button
                           as={Link}
                           to={`/edit-log/${log._id}`}
@@ -264,7 +264,7 @@ const AllLogs = () => {
                         </Button>
                       )}
 
-                      {log.status === 'submitted' && user.role === 'admin' && (
+                      {log.status === 'submitted' && user.role === 'Manager' && (
                         <Button
                           variant="outline-success"
                           size="sm"
