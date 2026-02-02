@@ -37,7 +37,7 @@ const AllLogs = () => {
     try {
       setLoading(true);
       let response;
-      if (user.role === 'Manager') {
+      if (user.role === 'admin') {
         response = await logService.getAllLogsAdmin(filters);
       } else {
         response = await logService.getAllLogs(filters);
@@ -264,7 +264,7 @@ const AllLogs = () => {
                         </Button>
                       )}
 
-                      {log.status === 'submitted' && user.role === 'Manager' && (
+                      {log.status === 'submitted' && user.role === 'admin' && (
                         <Button
                           variant="outline-success"
                           size="sm"
