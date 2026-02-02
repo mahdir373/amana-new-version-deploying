@@ -8,67 +8,50 @@ import { toast } from 'react-toastify';
 import DatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
 
-/* =========================
-   עובדים – קלט ידני
-========================= */
-const EmployeeInputList = ({ values, setFieldValue, errors, touched }) => {
-  const employees = values.employees || [];
+/* ================= עובדים ידניים ================= */
+const EmployeeInputList = ({ values, setFieldValue }) => (
+  <Form.Group className="mb-3">
+    <Form.Label>עובדים נוכחים</Form.Label>
 
-  const updateEmployee = (index, value) => {
-    const updated = [...employees];
-    updated[index] = value;
-    setFieldValue('employees', updated);
-  };
+    {values.employees.map((employee, index) => (
+      <Row key={index} className="mb-2">
+        <Col xs={10}>
+          <Form.Control
+            type="text"
+            value={employee}
+            placeholder="שם העובד"
+            onChange={(e) => {
+              const updated = [...values.employees];
+              updated[index] = e.target.value;
+              setFieldValue('employees', updated);
+            }}
+          />
+        </Col>
+        <Col xs={2}>
+          <Button
+            variant="outline-danger"
+            disabled={values.employees.length === 1}
+            onClick={() => {
+              const updated = values.employees.filter((_, i) => i !== index);
+              setFieldValue('employees', updated);
+            }}
+          >
+            ✕
+          </Button>
+        </Col>
+      </Row>
+    ))}
 
-  const removeEmployee = (index) => {
-    const updated = [...employees];
-    updated.splice(index, 1);
-    setFieldValue('employees', updated.length ? updated : ['']);
-  };
+    <Button
+      variant="outline-primary"
+      onClick={() => setFieldValue('employees', [...values.employees, ''])}
+    >
+      הוסף עובד
+    </Button>
+  </Form.Group>
+);
 
-  return (
-    <Form.Group className="mb-3">
-      <Form.Label>עובדים נוכחים</Form.Label>
-
-      {employees.map((employee, index) => (
-        <Row key={index} className="mb-2">
-          <Col xs={10}>
-            <Form.Control
-              type="text"
-              value={employee}
-              placeholder="שם העובד"
-              onChange={(e) => updateEmployee(index, e.target.value)}
-            />
-          </Col>
-          <Col xs={2}>
-            <Button
-              variant="outline-danger"
-              onClick={() => removeEmployee(index)}
-              disabled={employees.length === 1}
-            >
-              ✕
-            </Button>
-          </Col>
-        </Row>
-      ))}
-
-      <Button
-        variant="outline-primary"
-        onClick={() => setFieldValue('employees', [...employees, ''])}
-      >
-        הוסף עובד
-      </Button>
-
-      {touched.employees && errors.employees && (
-        <div className="text-danger mt-1">{errors.employees}</div>
-      )}
-    </Form.Group>
-  );
-};
-
-/* =========================
-   בחירת שעה – רבעי שעה
-========================= */
+/* ================= בחירת שעה ברבע שעה ================= */
 const QuarterHourSelectTimePicker = ({ label, value, onChange }) => {
   const pad = (n) => String(n).padStart(2, '0');
 
@@ -84,61 +67,53 @@ const QuarterHourSelectTimePicker = ({ label, value, onChange }) => {
       ? `${pad(value.getHours())}:${pad(value.getMinutes() - (value.getMinutes() % 15))}`
       : '00:00';
 
-  const handleChange = (e) => {
-    const [h, m] = e.target.value.split(':').map(Number);
-    const next = value ? new Date(value) : new Date();
-    next.setHours(h, m, 0, 0);
-    onChange(next);
-  };
-
   return (
     <Form.Group className="mb-3">
       <Form.Label>{label}</Form.Label>
-      <Form.Select value={current} onChange={handleChange}>
+      <Form.Select
+        value={current}
+        onChange={(e) => {
+          const [hh, mm] = e.target.value.split(':').map(Number);
+          const next = new Date(value || new Date());
+          next.setHours(hh, mm, 0, 0);
+          onChange(next);
+        }}
+      >
         {options.map((opt) => (
-          <option key={opt} value={opt}>
-            {opt}
-          </option>
+          <option key={opt} value={opt}>{opt}</option>
         ))}
       </Form.Select>
     </Form.Group>
   );
 };
 
-/* =========================
-   Edit Daily Log
-========================= */
+/* ================= EditDailyLog ================= */
 const EditDailyLog = () => {
   const { id } = useParams();
   const navigate = useNavigate();
 
   const [initialValues, setInitialValues] = useState(null);
-  const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [loading, setLoading] = useState(true);
 
-  /* ---------- טעינת הדו״ח ---------- */
+  /* ====== טעינת הדו"ח ====== */
   useEffect(() => {
     const fetchLog = async () => {
       try {
-        const { data: log } = await logService.getLogById(id);
+        const { data } = await logService.getLogById(id);
 
         setInitialValues({
-          date: log.date ? new Date(log.date) : new Date(),
-          project: log.project || '',
-          employees: log.employees?.length ? log.employees : [''],
-          startTime: log.startTime ? new Date(log.startTime) : new Date(),
-          endTime: log.endTime ? new Date(log.endTime) : new Date(),
-          workDescription: log.workDescription || '',
-          workHours: log.workHours || 0,
+          date: new Date(data.date),
+          project: data.project,
+          employees: data.employees?.length ? data.employees : [''],
+          startTime: new Date(data.startTime),
+          endTime: new Date(data.endTime),
+          workDescription: data.workDescription || '',
           workPhotos: [],
-          photos: log.photos || [],
-          documents: log.documents || [],
-          status: log.status || 'draft',
         });
       } catch (err) {
-        console.error(err);
-        setError('לא ניתן לטעון את הדו״ח');
-        toast.error('שגיאה בטעינת הדו״ח');
+        setError('שגיאה בטעינת הדו״ח');
+        toast.error('Failed to load log');
       } finally {
         setLoading(false);
       }
@@ -147,19 +122,16 @@ const EditDailyLog = () => {
     fetchLog();
   }, [id]);
 
-  /* ---------- ולידציה ---------- */
+  /* ====== ולידציה ====== */
   const validationSchema = Yup.object({
-    date: Yup.date().required('יש להזין תאריך'),
-    project: Yup.string().required(),
-    employees: Yup.array()
-      .of(Yup.string().trim().required())
-      .min(1, 'יש להזין לפחות עובד אחד'),
-    startTime: Yup.date().required('יש להזין שעת התחלה'),
-    endTime: Yup.date().required('יש להזין שעת סיום'),
-    workDescription: Yup.string().required('יש להזין תיאור עבודה'),
+    date: Yup.date().required(),
+    employees: Yup.array().min(1),
+    startTime: Yup.date().required(),
+    endTime: Yup.date().required(),
+    workDescription: Yup.string().required(),
   });
 
-  /* ---------- שליחה ---------- */
+  /* ====== שליחה ====== */
   const handleSubmit = async (values, { setSubmitting }) => {
     try {
       setError('');
@@ -172,51 +144,46 @@ const EditDailyLog = () => {
       const end = new Date(baseDate);
       end.setHours(values.endTime.getHours(), values.endTime.getMinutes(), 0, 0);
 
+      const cleanedEmployees = values.employees
+        .map(e => e.trim())
+        .filter(Boolean);
+
       const payload = {
-        ...values,
-        employees: values.employees.filter((e) => e.trim()),
         date: baseDate.toISOString(),
+        project: values.project,
+        employees: JSON.stringify(cleanedEmployees), // ⭐⭐⭐ הכי חשוב ⭐⭐⭐
         startTime: start.toISOString(),
         endTime: end.toISOString(),
+        workDescription: values.workDescription,
+        status: 'draft',
       };
-
-      delete payload.workPhotos;
 
       await logService.updateLog(id, payload);
 
-      if (values.workPhotos?.length) {
-        const formData = new FormData();
-        values.workPhotos.forEach((file) => formData.append('photos', file));
-        await fileService.uploadPhoto(id, formData);
+      if (values.workPhotos.length > 0) {
+        const fd = new FormData();
+        values.workPhotos.forEach(f => fd.append('photos', f));
+        await fileService.uploadPhoto(id, fd);
       }
 
       toast.success('הדו״ח עודכן בהצלחה');
       navigate('/');
     } catch (err) {
       console.error(err);
-      setError('שגיאה בעדכון הדו״ח');
-      toast.error('העדכון נכשל');
+      setError('עדכון הדו״ח נכשל');
+      toast.error('Update failed');
     } finally {
       setSubmitting(false);
     }
   };
 
   if (loading || !initialValues) {
-    return (
-      <Container>
-        <p className="text-center">טוען טופס...</p>
-      </Container>
-    );
+    return <Container><p className="text-center">טוען…</p></Container>;
   }
 
   return (
     <Container dir="rtl">
-      <Row className="mb-4">
-        <Col>
-          <h2>עריכת דו״ח עבודה יומי</h2>
-          <p className="text-muted">עדכון פרטי העבודה</p>
-        </Col>
-      </Row>
+      <h2 className="mb-4">עריכת דו״ח עבודה</h2>
 
       {error && <Alert variant="danger">{error}</Alert>}
 
@@ -228,46 +195,26 @@ const EditDailyLog = () => {
             onSubmit={handleSubmit}
             enableReinitialize
           >
-            {({
-              values,
-              errors,
-              touched,
-              handleChange,
-              handleBlur,
-              handleSubmit,
-              setFieldValue,
-              isSubmitting,
-            }) => (
+            {({ values, handleSubmit, setFieldValue, isSubmitting }) => (
               <Form onSubmit={handleSubmit}>
                 <Row>
                   <Col md={6}>
-                    <Form.Group className="mb-3">
-                      <Form.Label>תאריך</Form.Label>
-                      <DatePicker
-                        selected={values.date}
-                        onChange={(d) => setFieldValue('date', d)}
-                        className={`form-control ${
-                          touched.date && errors.date ? 'is-invalid' : ''
-                        }`}
-                        dateFormat="dd/MM/yyyy"
-                      />
-                    </Form.Group>
+                    <Form.Label>תאריך</Form.Label>
+                    <DatePicker
+                      selected={values.date}
+                      onChange={(d) => setFieldValue('date', d)}
+                      className="form-control"
+                      dateFormat="dd/MM/yyyy"
+                    />
                   </Col>
 
                   <Col md={6}>
-                    <Form.Group className="mb-3">
-                      <Form.Label>שם פרויקט</Form.Label>
-                      <Form.Control type="text" value={values.project} readOnly />
-                    </Form.Group>
+                    <Form.Label>פרויקט</Form.Label>
+                    <Form.Control value={values.project} readOnly />
                   </Col>
                 </Row>
 
-                <EmployeeInputList
-                  values={values}
-                  setFieldValue={setFieldValue}
-                  errors={errors}
-                  touched={touched}
-                />
+                <EmployeeInputList values={values} setFieldValue={setFieldValue} />
 
                 <Row>
                   <Col md={6}>
@@ -291,16 +238,13 @@ const EditDailyLog = () => {
                   <Form.Control
                     as="textarea"
                     rows={4}
-                    name="workDescription"
                     value={values.workDescription}
-                    onChange={handleChange}
-                    onBlur={handleBlur}
-                    isInvalid={touched.workDescription && errors.workDescription}
+                    onChange={(e) => setFieldValue('workDescription', e.target.value)}
                   />
                 </Form.Group>
 
-                <Form.Group className="mb-4">
-                  <Form.Label>צרף תמונות חדשות</Form.Label>
+                <Form.Group className="mb-3">
+                  <Form.Label>תמונות חדשות</Form.Label>
                   <Form.Control
                     type="file"
                     multiple
@@ -316,7 +260,7 @@ const EditDailyLog = () => {
                     ביטול
                   </Button>
                   <Button type="submit" variant="success" disabled={isSubmitting}>
-                    {isSubmitting ? 'שומר…' : 'שמור עדכון'}
+                    שמור
                   </Button>
                 </div>
               </Form>
