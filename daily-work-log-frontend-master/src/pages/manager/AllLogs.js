@@ -250,19 +250,19 @@ const AllLogs = () => {
                       >
                         <FaEye />
                       </Button>
-
-                      {(user.role === 'Manager' || log.teamLeader?._id === user.id) && (
-                        <Button
-                          as={Link}
-                          to={`/edit-log/${log._id}`}
-                          variant="outline-warning"
-                          size="sm"
-                          className="me-1"
-                          title="עריכה"
-                        >
-                          <FaEdit />
-                        </Button>
-                      )}
+{(user.role === 'Manager' ||
+  (user.role === 'Team Leader' && log.teamLeader?._id?.toString() === user.id)) && (
+  <Button
+    as={Link}
+    to={`/edit-log/${log._id}`}
+    variant="outline-warning"
+    size="sm"
+    className="me-1"
+    title="עריכה"
+  >
+    <FaEdit />
+  </Button>
+)}
 
                       {log.status === 'submitted' && user.role === 'admin' && (
                         <Button

@@ -219,10 +219,14 @@ exports.updateLog = async (req, res) => {
     const log = await DailyLog.findById(req.params.id);
     if (!log) return res.status(404).json({ message: 'Log not found' });
 
-    // ✅ הרשאה
-    if (req.userRole !== 'Manager' && log.teamLeader.toString() !== req.userId) {
-      return res.status(403).json({ message: 'Not authorized to update this log' });
-    }
+ // ✅ Allow both Manager and Team Leader
+if (
+  req.userRole !== 'Manager' &&
+  !(req.userRole === 'Team Leader' && log.teamLeader.toString() === req.userId)
+) {
+  return res.status(403).json({ message: 'Require Team Leader or Manager Role' });
+}
+
 
     // לא ניתן לערוך דוחות שאושרו
     if (log.status === 'approved') {
