@@ -3,58 +3,56 @@ import { Container, Row, Col, Form, Button, Card, Alert } from 'react-bootstrap'
 import { useNavigate, useParams } from 'react-router-dom';
 import { Formik } from 'formik';
 import * as Yup from 'yup';
-import { logService, fileService, employeeService, projectService } from '../../services/apiService';
+import { logService, fileService } from '../../services/apiService';
 import { toast } from 'react-toastify';
 import DatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
 
-// פונקציית עזר לעובדים ידניים
-const EmployeeInputList = ({ values, setFieldValue, errors, touched }) => {
-  return (
-    <Form.Group className="mb-3">
-      <Form.Label>עובדים נוכחים</Form.Label>
-      {values.employees.map((employee, index) => (
-        <Row key={index} className="mb-2">
-          <Col xs={10}>
-            <Form.Control
-              type="text"
-              name={`employees[${index}]`}
-              value={employee}
-              onChange={(e) => {
-                const updated = [...values.employees];
-                updated[index] = e.target.value;
-                setFieldValue('employees', updated);
-              }}
-              placeholder="שם העובד"
-            />
-          </Col>
-          <Col xs={2}>
-            <Button
-              variant="outline-danger"
-              onClick={() => {
-                const updated = [...values.employees];
-                updated.splice(index, 1);
-                setFieldValue('employees', updated);
-              }}
-              disabled={values.employees.length === 1}
-            >
-              ✕
-            </Button>
-          </Col>
-        </Row>
-      ))}
-      <Button
-        variant="outline-primary"
-        onClick={() => setFieldValue('employees', [...values.employees, ''])}
-      >
-        הוסף עובד
-      </Button>
-      {touched.employees && errors.employees && (
-        <div className="text-danger mt-1">{errors.employees}</div>
-      )}
-    </Form.Group>
-  );
-};
+// קומפוננטה לעובדים ידניים
+const EmployeeInputList = ({ values, setFieldValue, errors, touched }) => (
+  <Form.Group className="mb-3">
+    <Form.Label>עובדים נוכחים</Form.Label>
+    {values.employees.map((employee, index) => (
+      <Row key={index} className="mb-2">
+        <Col xs={10}>
+          <Form.Control
+            type="text"
+            name={`employees[${index}]`}
+            value={employee}
+            onChange={(e) => {
+              const updated = [...values.employees];
+              updated[index] = e.target.value;
+              setFieldValue('employees', updated);
+            }}
+            placeholder="שם העובד"
+          />
+        </Col>
+        <Col xs={2}>
+          <Button
+            variant="outline-danger"
+            onClick={() => {
+              const updated = [...values.employees];
+              updated.splice(index, 1);
+              setFieldValue('employees', updated);
+            }}
+            disabled={values.employees.length === 1}
+          >
+            ✕
+          </Button>
+        </Col>
+      </Row>
+    ))}
+    <Button
+      variant="outline-primary"
+      onClick={() => setFieldValue('employees', [...values.employees, ''])}
+    >
+      הוסף עובד
+    </Button>
+    {touched.employees && errors.employees && (
+      <div className="text-danger mt-1">{errors.employees}</div>
+    )}
+  </Form.Group>
+);
 
 // קומפוננטה לבחירת שעות ברבעי שעה
 const QuarterHourSelectTimePicker = ({ label, value, onChange }) => {
@@ -94,28 +92,23 @@ const EditDailyLog = () => {
   const [initialValues, setInitialValues] = useState(null);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
-  const [projects, setProjects] = useState([]);
 
   // טעינת הדו"ח הקיים
   useEffect(() => {
-    const fetchData = async () => {
+    const fetchLog = async () => {
       try {
-        const [logRes, projectsRes] = await Promise.all([
-          logService.getLogById(id),
-          projectService.getActiveProjects(),
-        ]);
-        const log = logRes.data;
-        setProjects(projectsRes.data);
+        const res = await logService.getLogById(id);
+        const log = res.data;
 
         setInitialValues({
           date: log.date ? new Date(log.date) : new Date(),
-          project: log.project || '',
+          project: log.project || '', // השם הקיים נשמר
           employees: log.employees.length ? log.employees : [''],
           startTime: log.startTime ? new Date(log.startTime) : new Date(),
           endTime: log.endTime ? new Date(log.endTime) : new Date(),
           workDescription: log.workDescription || '',
           workHours: log.workHours || 0,
-          workPhotos: [], // קבצים חדשים ל-upload
+          workPhotos: [], // קבצים חדשים בלבד
           photos: log.photos || [],
           documents: log.documents || [],
           status: log.status || 'draft',
@@ -128,12 +121,12 @@ const EditDailyLog = () => {
         setLoading(false);
       }
     };
-    fetchData();
+    fetchLog();
   }, [id]);
 
   const validationSchema = Yup.object({
     date: Yup.date().required('יש להזין תאריך'),
-    project: Yup.string().required('יש להזין שם פרויקט'),
+    project: Yup.string().required('שם הפרויקט חסר'),
     employees: Yup.array().min(1, 'יש להזין לפחות עובד אחד'),
     startTime: Yup.date().required('יש להזין שעת התחלה'),
     endTime: Yup.date().required('יש להזין שעת סיום'),
@@ -144,9 +137,8 @@ const EditDailyLog = () => {
     try {
       setError('');
 
-      const { workPhotos, photos, documents, ...rest } = values;
+      const { workPhotos, ...rest } = values;
 
-      // יצירת start/end אמיתיים על בסיס התאריך
       const baseDate = new Date(values.date);
       const start = new Date(baseDate);
       start.setHours(values.startTime.getHours(), values.startTime.getMinutes(), 0, 0);
@@ -161,7 +153,6 @@ const EditDailyLog = () => {
         endTime: end.toISOString(),
       };
 
-      // עדכון הדו"ח הקיים
       await logService.updateLog(id, payload);
 
       // העלאת תמונות חדשות
@@ -221,20 +212,11 @@ const EditDailyLog = () => {
                   <Col md={6}>
                     <Form.Group className="mb-3">
                       <Form.Label>שם פרויקט</Form.Label>
-                      <Form.Select
-                        name="project"
+                      <Form.Control
+                        type="text"
                         value={values.project}
-                        onChange={handleChange}
-                        onBlur={handleBlur}
-                        isInvalid={touched.project && !!errors.project}
-                      >
-                        <option value="">בחר פרויקט</option>
-                        {projects.map((p) => (
-                          <option key={p._id} value={p._id}>
-                            {p.name}
-                          </option>
-                        ))}
-                      </Form.Select>
+                        readOnly
+                      />
                     </Form.Group>
                   </Col>
                 </Row>
