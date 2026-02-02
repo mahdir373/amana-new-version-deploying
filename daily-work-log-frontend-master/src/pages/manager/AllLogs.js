@@ -5,7 +5,11 @@ import {
 } from 'react-bootstrap';
 import { Link } from 'react-router-dom';
 import {
-  FaEye, FaFileDownload, FaSearch, FaCheck, FaFilter
+  FaEye,
+  FaSearch,
+  FaCheck,
+  FaFilter,
+  FaEdit
 } from 'react-icons/fa';
 import { logService } from '../../services/apiService';
 import { useAuth } from '../../context/AuthContext';
@@ -14,6 +18,7 @@ import moment from 'moment';
 
 const AllLogs = () => {
   const { user } = useAuth();
+
   const [logs, setLogs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -92,25 +97,6 @@ const AllLogs = () => {
     }
   };
 
-  const handleExportToPdf = async (id) => {
-    try {
-      const response = await logService.exportLogToPdf(id);
-      const blob = new Blob([response.data], { type: 'application/pdf' });
-      const url = window.URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.setAttribute('download', `דו"ח-${id}.pdf`);
-      document.body.appendChild(link);
-      link.click();
-      window.URL.revokeObjectURL(url);
-      document.body.removeChild(link);
-      toast.success('הייצוא לפורמט PDF הצליח');
-    } catch (err) {
-      console.error('שגיאה בייצוא PDF:', err);
-      toast.error('הייצוא לפורמט PDF נכשל');
-    }
-  };
-
   return (
     <Container dir="rtl">
       <Row className="mb-4">
@@ -124,7 +110,8 @@ const AllLogs = () => {
             onClick={() => setShowFilters(!showFilters)}
             className="mb-2"
           >
-            <FaFilter className="me-1" /> {showFilters ? 'הסתר סינון' : 'הצג סינון'}
+            <FaFilter className="me-1" />
+            {showFilters ? 'הסתר סינון' : 'הצג סינון'}
           </Button>
         </Col>
       </Row>
@@ -140,13 +127,23 @@ const AllLogs = () => {
                 <Col md={6} lg={3}>
                   <Form.Group className="mb-3">
                     <Form.Label>מתאריך</Form.Label>
-                    <Form.Control type="date" name="startDate" value={filters.startDate} onChange={handleFilterChange} />
+                    <Form.Control
+                      type="date"
+                      name="startDate"
+                      value={filters.startDate}
+                      onChange={handleFilterChange}
+                    />
                   </Form.Group>
                 </Col>
                 <Col md={6} lg={3}>
                   <Form.Group className="mb-3">
                     <Form.Label>עד תאריך</Form.Label>
-                    <Form.Control type="date" name="endDate" value={filters.endDate} onChange={handleFilterChange} />
+                    <Form.Control
+                      type="date"
+                      name="endDate"
+                      value={filters.endDate}
+                      onChange={handleFilterChange}
+                    />
                   </Form.Group>
                 </Col>
                 <Col md={6} lg={3}>
@@ -161,31 +158,27 @@ const AllLogs = () => {
                     />
                   </Form.Group>
                 </Col>
-                <Col md={6} lg={3}>
-                  {/* <Form.Group className="mb-3">
-                    <Form.Label>עובד</Form.Label>
-                    <Form.Control
-                      type="text"
-                      name="employee"
-                      value={filters.employee}
-                      onChange={handleFilterChange}
-                      placeholder="הקלד שם עובד..."
-                    />
-                  </Form.Group> */}
-                </Col>
               </Row>
+
               <Row>
                 <Col md={6}>
                   <Form.Group className="mb-3">
                     <Form.Label>ראש צוות</Form.Label>
-                    <Form.Select name="teamLeader" value={filters.teamLeader} onChange={handleFilterChange}>
+                    <Form.Select
+                      name="teamLeader"
+                      value={filters.teamLeader}
+                      onChange={handleFilterChange}
+                    >
                       <option value="">כל ראשי הצוות</option>
                       {teamLeaders.map(leader => (
-                        <option key={leader._id} value={leader._id}>{leader.fullName}</option>
+                        <option key={leader._id} value={leader._id}>
+                          {leader.fullName}
+                        </option>
                       ))}
                     </Form.Select>
                   </Form.Group>
                 </Col>
+
                 <Col md={6}>
                   <Form.Group className="mb-3">
                     <Form.Label>חיפוש</Form.Label>
@@ -197,14 +190,21 @@ const AllLogs = () => {
                         value={filters.searchTerm}
                         onChange={handleFilterChange}
                       />
-                      <Button variant="outline-secondary" type="submit"><FaSearch /></Button>
+                      <Button variant="outline-secondary" type="submit">
+                        <FaSearch />
+                      </Button>
                     </InputGroup>
                   </Form.Group>
                 </Col>
               </Row>
+
               <div className="d-flex justify-content-between">
-                <Button variant="secondary" onClick={resetFilters}>איפוס סינון</Button>
-                <Button type="submit" variant="primary">החל סינון</Button>
+                <Button variant="secondary" onClick={resetFilters}>
+                  איפוס סינון
+                </Button>
+                <Button type="submit" variant="primary">
+                  החל סינון
+                </Button>
               </div>
             </Form>
           </Card.Body>
@@ -218,7 +218,7 @@ const AllLogs = () => {
           {loading ? (
             <p className="text-center">טוען דוחות...</p>
           ) : logs.length === 0 ? (
-            <p className="text-center">לא נמצאו דוחות התואמים את הסינון</p>
+            <p className="text-center">לא נמצאו דוחות</p>
           ) : (
             <Table responsive hover>
               <thead>
@@ -231,21 +231,48 @@ const AllLogs = () => {
                 </tr>
               </thead>
               <tbody>
-                {logs.map((log) => (
+                {logs.map(log => (
                   <tr key={log._id}>
                     <td>{moment(log.date).format('DD/MM/YYYY')}</td>
                     <td>{log.teamLeader?.fullName || '—'}</td>
                     <td>{log.project}</td>
-                    <td>{moment(log.startTime).format('HH:mm')} - {moment(log.endTime).format('HH:mm')}</td>
                     <td>
-                      <Button as={Link} to={`/log-details/${log._id}`} variant="outline-primary" size="sm" className="me-1">
+                      {moment(log.startTime).format('HH:mm')} -{' '}
+                      {moment(log.endTime).format('HH:mm')}
+                    </td>
+                    <td>
+                      <Button
+                        as={Link}
+                        to={`/log-details/${log._id}`}
+                        variant="outline-primary"
+                        size="sm"
+                        className="me-1"
+                        title="צפייה"
+                      >
                         <FaEye />
                       </Button>
-                      <Button variant="outline-secondary" size="sm" className="me-1" onClick={() => handleExportToPdf(log._id)}>
-                        <FaFileDownload />
-                      </Button>
+
+                      {(user.role === 'Manager' ||
+                        log.teamLeader?._id === user.id) && (
+                        <Button
+                          as={Link}
+                          to={`/edit-log/${log._id}`}
+                          variant="outline-warning"
+                          size="sm"
+                          className="me-1"
+                          title="עריכה"
+                        >
+                          <FaEdit />
+                        </Button>
+                      )}
+
                       {log.status === 'submitted' && (
-                        <Button variant="outline-success" size="sm" onClick={() => handleApproveLog(log._id)}>
+                        <Button
+                          variant="outline-success"
+                          size="sm"
+                          title="אישור"
+                          onClick={() => handleApproveLog(log._id)}
+                        >
                           <FaCheck />
                         </Button>
                       )}
