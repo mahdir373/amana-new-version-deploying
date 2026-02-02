@@ -63,7 +63,7 @@ function App() {
           </ProtectedRoute>
         } />
         <Route path="/edit-log/:id" element={
-          <ProtectedRoute allowedRoles={['Team Leader']}>
+          <ProtectedRoute allowedRoles={['Team Leader','Manager']}>
             <EditDailyLog />
           </ProtectedRoute>
         } />

@@ -4,13 +4,7 @@ import {
   Form, InputGroup, Alert
 } from 'react-bootstrap';
 import { Link } from 'react-router-dom';
-import {
-  FaEye,
-  FaSearch,
-  FaCheck,
-  FaFilter,
-  FaEdit
-} from 'react-icons/fa';
+import { FaEye, FaSearch, FaCheck, FaFilter, FaEdit } from 'react-icons/fa';
 import { logService } from '../../services/apiService';
 import { useAuth } from '../../context/AuthContext';
 import { toast } from 'react-toastify';
@@ -42,7 +36,12 @@ const AllLogs = () => {
   const fetchLogs = async () => {
     try {
       setLoading(true);
-      const response = await logService.getAllLogs(filters);
+      let response;
+      if (user.role === 'admin') {
+        response = await logService.getAllLogsAdmin(filters);
+      } else {
+        response = await logService.getAllLogs(filters);
+      }
       setLogs(response.data);
       setError('');
     } catch (err) {
@@ -252,8 +251,7 @@ const AllLogs = () => {
                         <FaEye />
                       </Button>
 
-                      {(user.role === 'Manager' ||
-                        log.teamLeader?._id === user.id) && (
+                      {(user.role === 'admin' || log.teamLeader?._id === user.id) && (
                         <Button
                           as={Link}
                           to={`/edit-log/${log._id}`}
@@ -266,7 +264,7 @@ const AllLogs = () => {
                         </Button>
                       )}
 
-                      {log.status === 'submitted' && (
+                      {log.status === 'submitted' && user.role === 'admin' && (
                         <Button
                           variant="outline-success"
                           size="sm"
