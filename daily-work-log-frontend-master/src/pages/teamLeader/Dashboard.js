@@ -112,7 +112,7 @@ const TeamLeaderDashboard = () => {
 
                       {log.status === 'draft' && (
                         <>
-                          {/* <Button
+                          { <Button
                             as={Link}
                             to={`/edit-log/${log._id}`}
                             variant="outline-secondary"
@@ -120,7 +120,7 @@ const TeamLeaderDashboard = () => {
                             className="me-1"
                           >
                             <FaEdit />
-                          </Button> */}
+                          </Button> }
 
                           {/* <Button
                             variant="outline-success"

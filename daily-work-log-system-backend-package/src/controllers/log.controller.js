@@ -206,26 +206,30 @@ exports.createLog = async (req, res) => {
 
 
 
-// Update a log
+// Update a log — Manager or Team Leader
 exports.updateLog = async (req, res) => {
   try {
+    // בדיקת שדות תקינים
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
       return res.status(400).json({ errors: errors.array() });
     }
 
+    // שליפת הדוח
     const log = await DailyLog.findById(req.params.id);
     if (!log) return res.status(404).json({ message: 'Log not found' });
 
-    if (log.teamLeader.toString() !== req.userId) {
+    // ✅ הרשאה
+    if (req.userRole !== 'Manager' && log.teamLeader.toString() !== req.userId) {
       return res.status(403).json({ message: 'Not authorized to update this log' });
     }
 
+    // לא ניתן לערוך דוחות שאושרו
     if (log.status === 'approved') {
       return res.status(400).json({ message: 'Cannot update an approved log' });
     }
 
-    // ✅ רק שדות שמותר לעדכן (Whitelist)
+    // רק שדות מותרים לעדכון
     const allowedFields = [
       'date',
       'project',
@@ -241,45 +245,37 @@ exports.updateLog = async (req, res) => {
       if (req.body[key] !== undefined) updateData[key] = req.body[key];
     }
 
-    // ✅ employees יכול להגיע כמחרוזת JSON (כששולחים FormData)
+    // employees יכול להגיע כמחרוזת JSON
     if (updateData.employees && typeof updateData.employees === 'string') {
       try {
         updateData.employees = JSON.parse(updateData.employees);
       } catch (e) {
-        // אם זה כבר "a,b,c" או משהו לא JSON
-        // אפשר להשאיר כמו שהוא או להפוך למערך לפי פסיקים
-        // פה נשאיר שגיאה כדי שלא יישמר משהו לא תקין:
         return res.status(400).json({ message: 'employees must be a valid JSON array' });
       }
     }
 
-    // ✅ תאריכים
+    // המרת תאריכים
     if (updateData.date) updateData.date = new Date(updateData.date);
     if (updateData.startTime) updateData.startTime = new Date(updateData.startTime);
     if (updateData.endTime) updateData.endTime = new Date(updateData.endTime);
 
-        // ⏱️ חישוב מחדש של שעות עבודה אם השתנו הזמנים
+    // חישוב מחדש של שעות עבודה
     if (updateData.startTime || updateData.endTime) {
       const start = updateData.startTime || log.startTime;
       const end = updateData.endTime || log.endTime;
 
       if (end <= start) {
-        return res.status(400).json({
-          message: 'End time must be after start time',
-        });
+        return res.status(400).json({ message: 'End time must be after start time' });
       }
 
       const diffMs = end - start;
-      updateData.workHours =
-        Math.round((diffMs / (1000 * 60 * 60)) * 100) / 100;
+      updateData.workHours = Math.round((diffMs / (1000 * 60 * 60)) * 100) / 100;
     }
 
-
-    // ✅ קבצים ישנים (local uploads) — רק אם אתה עדיין משתמש בזה במסך עדכון
+    // טיפול בקבצים
     if (req.files?.deliveryCertificate?.[0]) {
       updateData.deliveryCertificate =
-        'uploads/' +
-        req.files.deliveryCertificate[0].path.replace(/\\/g, '/').split('uploads/')[1];
+        'uploads/' + req.files.deliveryCertificate[0].path.replace(/\\/g, '/').split('uploads/')[1];
     }
 
     if (req.files?.workPhotos?.length) {
@@ -289,6 +285,7 @@ exports.updateLog = async (req, res) => {
       });
     }
 
+    // שמירה של הדוח לאחר עדכון
     const updatedLog = await DailyLog.findByIdAndUpdate(req.params.id, updateData, {
       new: true,
       runValidators: true
@@ -300,6 +297,7 @@ exports.updateLog = async (req, res) => {
     return res.status(500).json({ message: error.message || 'Error updating the log' });
   }
 };
+
 
 
 // Submit a log (SAFE VERSION)
