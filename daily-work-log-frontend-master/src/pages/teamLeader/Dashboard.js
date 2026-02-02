@@ -92,7 +92,7 @@ const TeamLeaderDashboard = () => {
                 </tr>
               </thead>
               <tbody>
-                {logs.slice(0, 5).map((log) => (
+                {logs.slice(0, 31).map((log) => (
                   <tr key={log._id}>
                     <td>{moment(log.date).format('DD/MM/YYYY')}</td>
                     <td>{log.project?.name || log.project}</td>
