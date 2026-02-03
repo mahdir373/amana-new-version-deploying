@@ -250,7 +250,7 @@ const AllLogs = () => {
                       >
                         <FaEye />
                       </Button>
-{user.role === 'admin' && (
+                      {(user.role === 'Manager' || user.role === 'Team Leader') && (
   <Button
     as={Link}
     to={`/edit-log/${log._id}`}
@@ -262,6 +262,7 @@ const AllLogs = () => {
     <FaEdit />
   </Button>
 )}
+
 
                       {log.status === 'submitted' && user.role === 'admin' && (
                         <Button
