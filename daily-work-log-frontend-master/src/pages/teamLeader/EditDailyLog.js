@@ -80,7 +80,9 @@ const QuarterHourSelectTimePicker = ({ label, value, onChange }) => {
         }}
       >
         {options.map((opt) => (
-          <option key={opt} value={opt}>{opt}</option>
+          <option key={opt} value={opt}>
+            {opt}
+          </option>
         ))}
       </Form.Select>
     </Form.Group>
@@ -105,15 +107,18 @@ const EditDailyLog = () => {
         setInitialValues({
           date: new Date(data.date),
           project: data.project,
-          employees: data.employees?.length ? data.employees : [''],
+          employees: Array.isArray(data.employees) && data.employees.length
+            ? data.employees
+            : [''],
           startTime: new Date(data.startTime),
           endTime: new Date(data.endTime),
           workDescription: data.workDescription || '',
           workPhotos: [],
         });
       } catch (err) {
+        console.error(err);
         setError('שגיאה בטעינת הדו״ח');
-        toast.error('Failed to load log');
+        toast.error('טעינת הדו״ח נכשלה');
       } finally {
         setLoading(false);
       }
@@ -139,10 +144,20 @@ const EditDailyLog = () => {
       const baseDate = new Date(values.date);
 
       const start = new Date(baseDate);
-      start.setHours(values.startTime.getHours(), values.startTime.getMinutes(), 0, 0);
+      start.setHours(
+        values.startTime.getHours(),
+        values.startTime.getMinutes(),
+        0,
+        0
+      );
 
       const end = new Date(baseDate);
-      end.setHours(values.endTime.getHours(), values.endTime.getMinutes(), 0, 0);
+      end.setHours(
+        values.endTime.getHours(),
+        values.endTime.getMinutes(),
+        0,
+        0
+      );
 
       const cleanedEmployees = values.employees
         .map(e => e.trim())
@@ -151,7 +166,7 @@ const EditDailyLog = () => {
       const payload = {
         date: baseDate.toISOString(),
         project: values.project,
-        employees: JSON.stringify(cleanedEmployees), // ⭐⭐⭐ הכי חשוב ⭐⭐⭐
+        employees: cleanedEmployees, // ✅ ARRAY תקין
         startTime: start.toISOString(),
         endTime: end.toISOString(),
         workDescription: values.workDescription,
@@ -171,14 +186,18 @@ const EditDailyLog = () => {
     } catch (err) {
       console.error(err);
       setError('עדכון הדו״ח נכשל');
-      toast.error('Update failed');
+      toast.error('עדכון הדו״ח נכשל');
     } finally {
       setSubmitting(false);
     }
   };
 
   if (loading || !initialValues) {
-    return <Container><p className="text-center">טוען…</p></Container>;
+    return (
+      <Container>
+        <p className="text-center">טוען…</p>
+      </Container>
+    );
   }
 
   return (
@@ -214,7 +233,10 @@ const EditDailyLog = () => {
                   </Col>
                 </Row>
 
-                <EmployeeInputList values={values} setFieldValue={setFieldValue} />
+                <EmployeeInputList
+                  values={values}
+                  setFieldValue={setFieldValue}
+                />
 
                 <Row>
                   <Col md={6}>
@@ -239,7 +261,9 @@ const EditDailyLog = () => {
                     as="textarea"
                     rows={4}
                     value={values.workDescription}
-                    onChange={(e) => setFieldValue('workDescription', e.target.value)}
+                    onChange={(e) =>
+                      setFieldValue('workDescription', e.target.value)
+                    }
                   />
                 </Form.Group>
 
@@ -250,16 +274,26 @@ const EditDailyLog = () => {
                     multiple
                     accept="image/*"
                     onChange={(e) =>
-                      setFieldValue('workPhotos', Array.from(e.target.files))
+                      setFieldValue(
+                        'workPhotos',
+                        Array.from(e.target.files)
+                      )
                     }
                   />
                 </Form.Group>
 
                 <div className="d-flex justify-content-between">
-                  <Button variant="secondary" onClick={() => navigate('/')}>
+                  <Button
+                    variant="secondary"
+                    onClick={() => navigate('/')}
+                  >
                     ביטול
                   </Button>
-                  <Button type="submit" variant="success" disabled={isSubmitting}>
+                  <Button
+                    type="submit"
+                    variant="success"
+                    disabled={isSubmitting}
+                  >
                     שמור
                   </Button>
                 </div>

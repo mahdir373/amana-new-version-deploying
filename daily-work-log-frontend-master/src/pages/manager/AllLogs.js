@@ -250,8 +250,7 @@ const AllLogs = () => {
                       >
                         <FaEye />
                       </Button>
-{(user.role === 'Manager' ||
-  (user.role === 'Team Leader' && log.teamLeader?._id?.toString() === user.id)) && (
+{user.role === 'admin' && (
   <Button
     as={Link}
     to={`/edit-log/${log._id}`}
