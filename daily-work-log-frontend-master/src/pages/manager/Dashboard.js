@@ -212,6 +212,18 @@ const ManagerDashboard = () => {
                       >
                         <FaEye />
                       </Button>
+                      {user.role === 'admin' && (
+                        <Button
+                          as={Link}
+                          to={`/edit-log/${log._id}`}
+                          variant="outline-warning"
+                          size="sm"
+                          className="me-1"
+                          title="עריכה"
+                        >
+                          <FaEdit />
+                        </Button>
+                      )}
                       {log.status === 'submitted' && (
                         <Button
                           variant="outline-success"
