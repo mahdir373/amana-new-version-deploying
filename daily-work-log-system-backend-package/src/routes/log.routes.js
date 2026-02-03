@@ -58,7 +58,7 @@ router.post(
 router.put(
   '/:id',
   uploadFields,
-  isTeamLeader,
+  isManagerOrTeamLeader,
   [
     body('date').optional().isISO8601().withMessage('תאריך חוקי נדרש'),
     body('project').optional().isString().withMessage('פרויקט חייב להיות מחרוזת'),
