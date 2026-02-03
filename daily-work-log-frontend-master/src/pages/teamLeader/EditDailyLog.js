@@ -166,7 +166,7 @@ const EditDailyLog = () => {
       const payload = {
         date: baseDate.toISOString(),
         project: values.project,
-        employees: cleanedEmployees, // ✅ ARRAY תקין
+        employees: JSON.stringify(cleanedEmployees), // ✅ ARRAY תקין
         startTime: start.toISOString(),
         endTime: end.toISOString(),
         workDescription: values.workDescription,
