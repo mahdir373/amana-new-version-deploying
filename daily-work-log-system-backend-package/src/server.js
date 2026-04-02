@@ -36,7 +36,7 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(morgan('dev'));
 
-// ------------------ STATIC FILES (OLD LOCAL UPLOADS) ------------------
+// ------------------ STATIC FILES ------------------
 
 app.use(
   '/uploads',
@@ -54,24 +54,12 @@ app.use(
 
 // ------------------ API ROUTES ------------------
 
-// ✅ תומך גם ב-/api/auth וגם ב-/auth
 app.use(['/api/auth', '/auth'], authRoutes);
-
-// Users
 app.use(['/api/users', '/users'], userRoutes);
-
-// Projects
 app.use(['/api/projects', '/projects'], projectRoutes);
-
-// Logs
 app.use(['/api/logs', '/logs'], logRoutes);
-
 app.use(['/api/uploads', '/uploads', '/uploads-api'], uploadRoutes);
-// Notifications
 app.use(['/api/notifications', '/notifications'], notificationRoutes);
-
-// אם יש Employees בעתיד:
-// app.use(['/api/employees', '/employees'], employeeRoutes);
 
 // ------------------ ROOT ROUTE ------------------
 
@@ -81,7 +69,7 @@ app.get('/', (req, res) => {
 
 // ------------------ 404 HANDLER ------------------
 
-app.use((req, res, next) => {
+app.use((req, res) => {
   console.warn(`❌ Route not found: [${req.method}] ${req.originalUrl}`);
   res.status(404).json({
     message: 'Route not found',
@@ -90,7 +78,7 @@ app.use((req, res, next) => {
   });
 });
 
-// ------------------ ERROR HANDLER 500 ------------------
+// ------------------ ERROR HANDLER ------------------
 
 app.use((err, req, res, next) => {
   console.error('🔥 Server error:', err.stack);
@@ -109,15 +97,14 @@ if (!MONGODB_URI) {
   console.error('❌ MONGODB_URI is not defined in environment variables');
   process.exit(1);
 }
-app.listen(PORT, () => {
-  console.log("Server started WITHOUT Mongo");
-})
 
+// 🔥 חיבור ל-Mongo ואז הפעלת השרת
+mongoose
+  .connect(MONGODB_URI)
   .then(() => {
     console.log('✅ Connected to MongoDB');
     console.log('✅ MONGO CONNECTED TO DB:', mongoose.connection.name);
     console.log('✅ MONGO HOST:', mongoose.connection.host);
-
 
     app.listen(PORT, '0.0.0.0', () => {
       console.log(`🚀 Server is running on port ${PORT}`);
