@@ -102,7 +102,7 @@ app.use((err, req, res, next) => {
 
 // ------------------ DB & SERVER ------------------
 
-const PORT = process.env.PORT || 5001;
+const PORT = process.env.PORT || 8080;
 const MONGODB_URI = process.env.MONGODB_URI;
 
 if (!MONGODB_URI) {
