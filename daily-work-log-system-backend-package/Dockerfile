@@ -18,7 +18,7 @@ ENV NODE_ENV=production
 
 # הפורט שבו השרת מקשיב בתוך הקונטיינר
 # אם ב-code שלך אתה משתמש ב-PORT אחר – לשנות כאן
-EXPOSE 5000
+EXPOSE 8080
 
 # איך מריצים את השרת
 # אם ב-package.json הסקריפט שלך הוא "start": "node server.js"
