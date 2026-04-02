@@ -109,12 +109,10 @@ if (!MONGODB_URI) {
   console.error('❌ MONGODB_URI is not defined in environment variables');
   process.exit(1);
 }
+app.listen(PORT, () => {
+  console.log("Server started WITHOUT Mongo");
+})
 
-mongoose
-  .connect(MONGODB_URI, {
-    useNewUrlParser: true,
-    useUnifiedTopology: true,
-  })
   .then(() => {
     console.log('✅ Connected to MongoDB');
     console.log('✅ MONGO CONNECTED TO DB:', mongoose.connection.name);
