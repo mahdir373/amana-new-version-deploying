@@ -10,22 +10,9 @@ import { useAuth } from '../../context/AuthContext';
 import { toast } from 'react-toastify';
 import moment from 'moment';
 
-/*
-  ✅ מפתח קבוע לשמירת הסינון בדפדפן.
-  localStorage שומר את המידע גם אם נכנסים לדוח וחוזרים אחורה.
-*/
 const LOG_FILTERS_STORAGE_KEY = 'manager_all_logs_filters';
-
-/*
-  ✅ מפתח לשמירת מצב תיבת הסינון:
-  אם המשתמש פתח את הסינון, גם אחרי חזרה מהדוח הוא יישאר פתוח.
-*/
 const LOG_FILTERS_VISIBLE_KEY = 'manager_all_logs_filters_visible';
 
-/*
-  ✅ ברירת מחדל לסינון.
-  זה המצב הראשוני כאשר אין סינון שמור.
-*/
 const getDefaultFilters = () => ({
   startDate: moment().subtract(30, 'days').format('YYYY-MM-DD'),
   endDate: moment().format('YYYY-MM-DD'),
@@ -35,11 +22,6 @@ const getDefaultFilters = () => ({
   searchTerm: ''
 });
 
-/*
-  ✅ טעינת סינון שמור מהדפדפן.
-  אם אין סינון שמור — נחזיר ברירת מחדל.
-  אם יש שגיאה בקריאה — נחזור לברירת מחדל כדי לא לשבור את הדף.
-*/
 const getSavedFilters = () => {
   try {
     const savedFilters = localStorage.getItem(LOG_FILTERS_STORAGE_KEY);
@@ -58,10 +40,6 @@ const getSavedFilters = () => {
   }
 };
 
-/*
-  ✅ טעינת מצב הצגת הסינון.
-  אם המשתמש השאיר את הסינון פתוח — נחזיר true.
-*/
 const getSavedFiltersVisibleState = () => {
   try {
     return localStorage.getItem(LOG_FILTERS_VISIBLE_KEY) === 'true';
@@ -78,17 +56,7 @@ const AllLogs = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [teamLeaders, setTeamLeaders] = useState([]);
-
-  /*
-    ✅ showFilters נטען מה-localStorage.
-    כך אם פתחת את תיבת הסינון, נכנסת לדוח וחזרת — היא תישאר פתוחה.
-  */
   const [showFilters, setShowFilters] = useState(getSavedFiltersVisibleState);
-
-  /*
-    ✅ filters נטען מה-localStorage.
-    כך הסינון נשמר אחרי כניסה לדוח וחזרה.
-  */
   const [filters, setFilters] = useState(getSavedFilters);
 
   useEffect(() => {
@@ -99,9 +67,6 @@ const AllLogs = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  /*
-    ✅ פונקציה לפתיחה/סגירה של אזור הסינון + שמירה ב-localStorage.
-  */
   const toggleFilters = () => {
     setShowFilters(prev => {
       const newValue = !prev;
@@ -110,11 +75,6 @@ const AllLogs = () => {
     });
   };
 
-  /*
-    ✅ הפונקציה מקבלת filtersToUse.
-    זה חשוב כי setState ב-React לא מתעדכן מיד.
-    ככה אנחנו מוודאים שהבקשה לשרת נשלחת עם הסינון המדויק.
-  */
   const fetchLogs = async (filtersToUse = filters) => {
     try {
       setLoading(true);
@@ -151,31 +111,28 @@ const AllLogs = () => {
   const handleFilterChange = (e) => {
     const { name, value } = e.target;
 
-    setFilters(prev => ({
-      ...prev,
-      [name]: value
-    }));
+    setFilters(prev => {
+      const updatedFilters = {
+        ...prev,
+        [name]: value
+      };
+
+      localStorage.setItem(
+        LOG_FILTERS_STORAGE_KEY,
+        JSON.stringify(updatedFilters)
+      );
+
+      return updatedFilters;
+    });
   };
 
-  /*
-    ✅ כשעושים "החל סינון":
-    1. שומרים את הסינון ב-localStorage.
-    2. מביאים דוחות לפי הסינון הנוכחי.
-  */
   const applyFilters = (e) => {
     e.preventDefault();
 
     localStorage.setItem(LOG_FILTERS_STORAGE_KEY, JSON.stringify(filters));
-
     fetchLogs(filters);
   };
 
-  /*
-    ✅ איפוס סינון:
-    1. מחזיר לברירת מחדל.
-    2. מוחק את הסינון השמור.
-    3. טוען מחדש את הדוחות לפי ברירת המחדל.
-  */
   const resetFilters = () => {
     const defaultFilters = getDefaultFilters();
 
@@ -189,11 +146,6 @@ const AllLogs = () => {
     try {
       await logService.approveLog(id);
       toast.success('הדו"ח אושר בהצלחה');
-
-      /*
-        ✅ אחרי אישור דוח נטען מחדש לפי הסינון הקיים,
-        ולא נאבד את הסינון.
-      */
       fetchLogs(filters);
     } catch (err) {
       console.error('שגיאה באישור דו"ח:', err);
