@@ -50,6 +50,7 @@ const getSavedFiltersVisibleState = () => {
 };
 
 const AllLogs = () => {
+  console.log('✅ AllLogs updated version loaded');
   const { user } = useAuth();
 
   const [logs, setLogs] = useState([]);
@@ -110,6 +111,8 @@ const AllLogs = () => {
 
   const handleFilterChange = (e) => {
     const { name, value } = e.target;
+
+    console.log('✅ filter changed:', name, value);
 
     setFilters(prev => {
       const updatedFilters = {
