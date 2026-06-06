@@ -10,6 +10,67 @@ import { useAuth } from '../../context/AuthContext';
 import { toast } from 'react-toastify';
 import moment from 'moment';
 
+/*
+  ✅ מפתח קבוע לשמירת הסינון בדפדפן.
+  localStorage שומר את המידע גם אם נכנסים לדוח וחוזרים אחורה.
+*/
+const LOG_FILTERS_STORAGE_KEY = 'manager_all_logs_filters';
+
+/*
+  ✅ מפתח לשמירת מצב תיבת הסינון:
+  אם המשתמש פתח את הסינון, גם אחרי חזרה מהדוח הוא יישאר פתוח.
+*/
+const LOG_FILTERS_VISIBLE_KEY = 'manager_all_logs_filters_visible';
+
+/*
+  ✅ ברירת מחדל לסינון.
+  זה המצב הראשוני כאשר אין סינון שמור.
+*/
+const getDefaultFilters = () => ({
+  startDate: moment().subtract(30, 'days').format('YYYY-MM-DD'),
+  endDate: moment().format('YYYY-MM-DD'),
+  project: '',
+  employee: '',
+  teamLeader: '',
+  searchTerm: ''
+});
+
+/*
+  ✅ טעינת סינון שמור מהדפדפן.
+  אם אין סינון שמור — נחזיר ברירת מחדל.
+  אם יש שגיאה בקריאה — נחזור לברירת מחדל כדי לא לשבור את הדף.
+*/
+const getSavedFilters = () => {
+  try {
+    const savedFilters = localStorage.getItem(LOG_FILTERS_STORAGE_KEY);
+
+    if (!savedFilters) {
+      return getDefaultFilters();
+    }
+
+    return {
+      ...getDefaultFilters(),
+      ...JSON.parse(savedFilters)
+    };
+  } catch (error) {
+    console.error('שגיאה בטעינת הסינון השמור:', error);
+    return getDefaultFilters();
+  }
+};
+
+/*
+  ✅ טעינת מצב הצגת הסינון.
+  אם המשתמש השאיר את הסינון פתוח — נחזיר true.
+*/
+const getSavedFiltersVisibleState = () => {
+  try {
+    return localStorage.getItem(LOG_FILTERS_VISIBLE_KEY) === 'true';
+  } catch (error) {
+    console.error('שגיאה בטעינת מצב תיבת הסינון:', error);
+    return false;
+  }
+};
+
 const AllLogs = () => {
   const { user } = useAuth();
 
@@ -17,31 +78,55 @@ const AllLogs = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [teamLeaders, setTeamLeaders] = useState([]);
-  const [showFilters, setShowFilters] = useState(false);
 
-  const [filters, setFilters] = useState({
-    startDate: moment().subtract(30, 'days').format('YYYY-MM-DD'),
-    endDate: moment().format('YYYY-MM-DD'),
-    project: '',
-    employee: '',
-    teamLeader: '',
-    searchTerm: ''
-  });
+  /*
+    ✅ showFilters נטען מה-localStorage.
+    כך אם פתחת את תיבת הסינון, נכנסת לדוח וחזרת — היא תישאר פתוחה.
+  */
+  const [showFilters, setShowFilters] = useState(getSavedFiltersVisibleState);
+
+  /*
+    ✅ filters נטען מה-localStorage.
+    כך הסינון נשמר אחרי כניסה לדוח וחזרה.
+  */
+  const [filters, setFilters] = useState(getSavedFilters);
 
   useEffect(() => {
-    fetchLogs();
+    const savedFilters = getSavedFilters();
+
+    fetchLogs(savedFilters);
     fetchTeamLeaders();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const fetchLogs = async () => {
+  /*
+    ✅ פונקציה לפתיחה/סגירה של אזור הסינון + שמירה ב-localStorage.
+  */
+  const toggleFilters = () => {
+    setShowFilters(prev => {
+      const newValue = !prev;
+      localStorage.setItem(LOG_FILTERS_VISIBLE_KEY, String(newValue));
+      return newValue;
+    });
+  };
+
+  /*
+    ✅ הפונקציה מקבלת filtersToUse.
+    זה חשוב כי setState ב-React לא מתעדכן מיד.
+    ככה אנחנו מוודאים שהבקשה לשרת נשלחת עם הסינון המדויק.
+  */
+  const fetchLogs = async (filtersToUse = filters) => {
     try {
       setLoading(true);
+
       let response;
+
       if (user.role === 'admin') {
-        response = await logService.getAllLogsAdmin(filters);
+        response = await logService.getAllLogsAdmin(filtersToUse);
       } else {
-        response = await logService.getAllLogs(filters);
+        response = await logService.getAllLogs(filtersToUse);
       }
+
       setLogs(response.data);
       setError('');
     } catch (err) {
@@ -65,31 +150,51 @@ const AllLogs = () => {
 
   const handleFilterChange = (e) => {
     const { name, value } = e.target;
-    setFilters(prev => ({ ...prev, [name]: value }));
+
+    setFilters(prev => ({
+      ...prev,
+      [name]: value
+    }));
   };
 
+  /*
+    ✅ כשעושים "החל סינון":
+    1. שומרים את הסינון ב-localStorage.
+    2. מביאים דוחות לפי הסינון הנוכחי.
+  */
   const applyFilters = (e) => {
     e.preventDefault();
-    fetchLogs();
+
+    localStorage.setItem(LOG_FILTERS_STORAGE_KEY, JSON.stringify(filters));
+
+    fetchLogs(filters);
   };
 
+  /*
+    ✅ איפוס סינון:
+    1. מחזיר לברירת מחדל.
+    2. מוחק את הסינון השמור.
+    3. טוען מחדש את הדוחות לפי ברירת המחדל.
+  */
   const resetFilters = () => {
-    setFilters({
-      startDate: moment().subtract(30, 'days').format('YYYY-MM-DD'),
-      endDate: moment().format('YYYY-MM-DD'),
-      project: '',
-      employee: '',
-      teamLeader: '',
-      searchTerm: ''
-    });
-    setTimeout(fetchLogs, 0);
+    const defaultFilters = getDefaultFilters();
+
+    setFilters(defaultFilters);
+    localStorage.removeItem(LOG_FILTERS_STORAGE_KEY);
+
+    fetchLogs(defaultFilters);
   };
 
   const handleApproveLog = async (id) => {
     try {
       await logService.approveLog(id);
       toast.success('הדו"ח אושר בהצלחה');
-      fetchLogs();
+
+      /*
+        ✅ אחרי אישור דוח נטען מחדש לפי הסינון הקיים,
+        ולא נאבד את הסינון.
+      */
+      fetchLogs(filters);
     } catch (err) {
       console.error('שגיאה באישור דו"ח:', err);
       toast.error('אישור הדו"ח נכשל');
@@ -103,10 +208,11 @@ const AllLogs = () => {
           <h2>כל הדוחות היומיים</h2>
           <p className="text-muted">צפה ונהל את כל דוחות הצוות</p>
         </Col>
+
         <Col xs="auto">
           <Button
             variant="outline-primary"
-            onClick={() => setShowFilters(!showFilters)}
+            onClick={toggleFilters}
             className="mb-2"
           >
             <FaFilter className="me-1" />
@@ -120,6 +226,7 @@ const AllLogs = () => {
           <Card.Header>
             <h5 className="mb-0">סינון דוחות</h5>
           </Card.Header>
+
           <Card.Body>
             <Form onSubmit={applyFilters}>
               <Row>
@@ -134,6 +241,7 @@ const AllLogs = () => {
                     />
                   </Form.Group>
                 </Col>
+
                 <Col md={6} lg={3}>
                   <Form.Group className="mb-3">
                     <Form.Label>עד תאריך</Form.Label>
@@ -145,6 +253,7 @@ const AllLogs = () => {
                     />
                   </Form.Group>
                 </Col>
+
                 <Col md={6} lg={3}>
                   <Form.Group className="mb-3">
                     <Form.Label>פרויקט</Form.Label>
@@ -169,6 +278,7 @@ const AllLogs = () => {
                       onChange={handleFilterChange}
                     >
                       <option value="">כל ראשי הצוות</option>
+
                       {teamLeaders.map(leader => (
                         <option key={leader._id} value={leader._id}>
                           {leader.fullName}
@@ -189,6 +299,7 @@ const AllLogs = () => {
                         value={filters.searchTerm}
                         onChange={handleFilterChange}
                       />
+
                       <Button variant="outline-secondary" type="submit">
                         <FaSearch />
                       </Button>
@@ -201,6 +312,7 @@ const AllLogs = () => {
                 <Button variant="secondary" onClick={resetFilters}>
                   איפוס סינון
                 </Button>
+
                 <Button type="submit" variant="primary">
                   החל סינון
                 </Button>
@@ -229,6 +341,7 @@ const AllLogs = () => {
                   <th>פעולות</th>
                 </tr>
               </thead>
+
               <tbody>
                 {logs.map(log => (
                   <tr key={log._id}>
@@ -239,6 +352,7 @@ const AllLogs = () => {
                       {moment(log.startTime).format('HH:mm')} -{' '}
                       {moment(log.endTime).format('HH:mm')}
                     </td>
+
                     <td>
                       <Button
                         as={Link}
@@ -250,19 +364,19 @@ const AllLogs = () => {
                       >
                         <FaEye />
                       </Button>
-                      {(user.role === 'Manager' || user.role === 'Team Leader') && (
-  <Button
-    as={Link}
-    to={`/edit-log/${log._id}`}
-    variant="outline-warning"
-    size="sm"
-    className="me-1"
-    title="עריכה"
-  >
-    <FaEdit />
-  </Button>
-)}
 
+                      {(user.role === 'Manager' || user.role === 'Team Leader') && (
+                        <Button
+                          as={Link}
+                          to={`/edit-log/${log._id}`}
+                          variant="outline-warning"
+                          size="sm"
+                          className="me-1"
+                          title="עריכה"
+                        >
+                          <FaEdit />
+                        </Button>
+                      )}
 
                       {log.status === 'submitted' && user.role === 'admin' && (
                         <Button
