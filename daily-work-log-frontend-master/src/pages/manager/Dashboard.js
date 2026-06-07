@@ -7,34 +7,75 @@ import { useAuth } from '../../context/AuthContext';
 import { toast } from 'react-toastify';
 import moment from 'moment';
 
+const MANAGER_DASHBOARD_FILTERS_KEY = 'manager_dashboard_filters';
+
+const getDefaultFilters = () => ({
+  startDate: moment().subtract(7, 'days').format('YYYY-MM-DD'),
+  endDate: moment().format('YYYY-MM-DD'),
+  project: ''
+});
+
+const getSavedFilters = () => {
+  try {
+    const savedFilters = localStorage.getItem(MANAGER_DASHBOARD_FILTERS_KEY);
+
+    if (!savedFilters) {
+      return getDefaultFilters();
+    }
+
+    return {
+      ...getDefaultFilters(),
+      ...JSON.parse(savedFilters)
+    };
+  } catch (error) {
+    console.error('שגיאה בטעינת סינון לוח המנהל:', error);
+    return getDefaultFilters();
+  }
+};
+
 const ManagerDashboard = () => {
   const { user } = useAuth();
+
   const [logs, setLogs] = useState([]);
   const [projects, setProjects] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [filters, setFilters] = useState({
-    startDate: moment().subtract(7, 'days').format('YYYY-MM-DD'),
-    endDate: moment().format('YYYY-MM-DD'),
-    project: ''
-  });
+  const [filters, setFilters] = useState(getSavedFilters);
 
   useEffect(() => {
+    const savedFilters = getSavedFilters();
+
     fetchProjects();
-    fetchLogs();
+    fetchLogs(savedFilters);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const fetchLogs = async () => {
+  const buildQueryFromFilters = (filtersToUse) => {
+    const query = {};
+
+    if (filtersToUse.startDate) {
+      query.startDate = filtersToUse.startDate;
+    }
+
+    if (filtersToUse.endDate) {
+      query.endDate = filtersToUse.endDate;
+    }
+
+    if (filtersToUse.project && filtersToUse.project.trim()) {
+      query.project = filtersToUse.project.trim();
+    }
+
+    return query;
+  };
+
+  const fetchLogs = async (filtersToUse = filters) => {
     try {
       setLoading(true);
-  
-      // בונים את האובייקט רק עם שדות שמולאו
-      const query = {};
-      if (filters.startDate) query.startDate = filters.startDate;
-      if (filters.endDate) query.endDate = filters.endDate;
-      if (filters.project.trim()) query.project = filters.project.trim();
-  
+
+      const query = buildQueryFromFilters(filtersToUse);
+
       const response = await logService.getAllLogs(query);
+
       setLogs(response.data);
       setError('');
     } catch (err) {
@@ -45,7 +86,6 @@ const ManagerDashboard = () => {
       setLoading(false);
     }
   };
-  
 
   const fetchProjects = async () => {
     try {
@@ -59,22 +99,39 @@ const ManagerDashboard = () => {
 
   const handleFilterChange = (e) => {
     const { name, value } = e.target;
-    setFilters(prev => ({
-      ...prev,
-      [name]: value
-    }));
+
+    setFilters(prev => {
+      const updatedFilters = {
+        ...prev,
+        [name]: value
+      };
+
+      localStorage.setItem(
+        MANAGER_DASHBOARD_FILTERS_KEY,
+        JSON.stringify(updatedFilters)
+      );
+
+      return updatedFilters;
+    });
   };
 
   const applyFilters = (e) => {
     e.preventDefault();
-    fetchLogs();
+
+    localStorage.setItem(
+      MANAGER_DASHBOARD_FILTERS_KEY,
+      JSON.stringify(filters)
+    );
+
+    fetchLogs(filters);
   };
 
   const handleApproveLog = async (id) => {
     try {
       await logService.approveLog(id);
       toast.success('הדו"ח אושר בהצלחה');
-      fetchLogs();
+
+      fetchLogs(filters);
     } catch (err) {
       console.error('שגיאה באישור הדו"ח:', err);
       toast.error('נכשל באישור הדו"ח');
@@ -87,12 +144,16 @@ const ManagerDashboard = () => {
       const blob = new Blob([response.data], { type: 'application/pdf' });
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
+
       link.href = url;
       link.setAttribute('download', `daily-log-${id}.pdf`);
+
       document.body.appendChild(link);
       link.click();
+
       window.URL.revokeObjectURL(url);
       document.body.removeChild(link);
+
       toast.success('הייצוא ל־PDF הושלם בהצלחה');
     } catch (err) {
       console.error('שגיאה ביצוא PDF:', err);
@@ -126,6 +187,7 @@ const ManagerDashboard = () => {
         <Card.Header>
           <h5 className="mb-0">סינון דוחות</h5>
         </Card.Header>
+
         <Card.Body>
           <Form onSubmit={applyFilters}>
             <Row>
@@ -140,6 +202,7 @@ const ManagerDashboard = () => {
                   />
                 </Form.Group>
               </Col>
+
               <Col md={4}>
                 <Form.Group className="mb-3">
                   <Form.Label>תאריך סיום</Form.Label>
@@ -151,6 +214,7 @@ const ManagerDashboard = () => {
                   />
                 </Form.Group>
               </Col>
+
               <Col md={4}>
                 <Form.Group className="mb-3">
                   <Form.Label>שם פרויקט</Form.Label>
@@ -164,6 +228,7 @@ const ManagerDashboard = () => {
                 </Form.Group>
               </Col>
             </Row>
+
             <Button type="submit" variant="primary">
               <FaSearch className="me-1" /> סנן דוחות
             </Button>
@@ -177,6 +242,7 @@ const ManagerDashboard = () => {
         <Card.Header>
           <h5 className="mb-0">דוחות עבודה יומיים</h5>
         </Card.Header>
+
         <Card.Body>
           {loading ? (
             <p className="text-center">טוען דוחות...</p>
@@ -190,18 +256,20 @@ const ManagerDashboard = () => {
                   <th>ראש צוות</th>
                   <th>פרויקט</th>
                   <th>שעות עבודה</th>
-                 
                   <th>פעולות</th>
                 </tr>
               </thead>
+
               <tbody>
                 {logs.map((log) => (
                   <tr key={log._id}>
                     <td>{moment(log.date).format('DD/MM/YYYY')}</td>
-                    <td>{log.teamLeader.fullName|| '—'}</td>
+                    <td>{log.teamLeader?.fullName || '—'}</td>
                     <td>{log.project}</td>
-                    <td>{moment(log.startTime).format('HH:mm')} - {moment(log.endTime).format('HH:mm')}</td>
-                   
+                    <td>
+                      {moment(log.startTime).format('HH:mm')} - {moment(log.endTime).format('HH:mm')}
+                    </td>
+
                     <td>
                       <Button
                         as={Link}
@@ -212,18 +280,7 @@ const ManagerDashboard = () => {
                       >
                         <FaEye />
                       </Button>
-                      {/* {user.role === 'admin' && (
-                        <Button
-                          as={Link}
-                          to={`/edit-log/${log._id}`}
-                          variant="outline-warning"
-                          size="sm"
-                          className="me-1"
-                          title="עריכה"
-                        >
-                          <FaEdit />
-                        </Button>
-                      )} */}
+
                       {log.status === 'submitted' && (
                         <Button
                           variant="outline-success"
