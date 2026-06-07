@@ -160,7 +160,7 @@ const AllLogs = () => {
     <Container dir="rtl">
       <Row className="mb-4">
         <Col>
-          <h2>כל הדוחות גרסה  היומיים</h2>
+          <h2>כל הדוחות היומיים</h2>
           <p className="text-muted">צפה ונהל את כל דוחות הצוות</p>
         </Col>
 
